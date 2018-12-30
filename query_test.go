@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rs/rest-layer/resource"
-	"github.com/rs/rest-layer/schema"
-	"github.com/rs/rest-layer/schema/query"
+	"github.com/oktacode/rest-layer/resource"
+	"github.com/oktacode/rest-layer/schema"
+	"github.com/oktacode/rest-layer/schema/query"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,6 +23,28 @@ func (u UnsupportedExpression) Prepare(v schema.Validator) error {
 
 func (u UnsupportedExpression) String() string {
 	return ""
+}
+
+func TestTranslateAggregate(t *testing.T) {
+	cases := []struct {
+		aggregate string
+		err       error
+		want      bson.M
+	}{
+		{`{f:{$group:true}}`, nil, bson.M{"total": bson.M{"$sum": 1}, "_id": "$f"}},
+	}
+	for i := range cases {
+		tc := cases[i]
+		t.Run(tc.aggregate, func(t *testing.T) {
+			got, err := translateAggregate(query.MustParseAggregate(tc.aggregate))
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Errorf("translateAggregate error:\ngot:  %v\nwant: %v", err, tc.err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("translateAggregate:\ngot:  %#v\nwant: %#v", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestTranslatePredicate(t *testing.T) {

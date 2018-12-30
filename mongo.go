@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/rest-layer/resource"
-	"github.com/rs/rest-layer/schema/query"
+	"github.com/oktacode/rest-layer/resource"
+	"github.com/oktacode/rest-layer/schema/query"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -269,6 +269,12 @@ func (m Handler) Find(ctx context.Context, q *query.Query) (*resource.ItemList, 
 	if err != nil {
 		return nil, err
 	}
+
+	agg, err := getAggregateQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
 	srt := getSort(q)
 
 	c, err := m.c(ctx)
@@ -277,24 +283,48 @@ func (m Handler) Find(ctx context.Context, q *query.Query) (*resource.ItemList, 
 	}
 	defer m.close(c)
 
-	mq := c.Find(qry).Sort(srt...)
 	limit := -1
-	if q.Window != nil {
-		mq = applyWindow(mq, *q.Window)
-		limit = q.Window.Limit
-	}
 
-	// Apply context deadline if any
-	if dl, ok := ctx.Deadline(); ok {
-		dur := dl.Sub(time.Now())
-		if dur < 0 {
-			dur = 0
+	var iter *mgo.Iter
+
+	//Check if its aggregation query or just normal filter query
+	if len(q.Aggregate) == 0 {
+		mq := c.Find(qry).Sort(srt...)
+
+		if q.Window != nil {
+			mq = applyWindow(mq, *q.Window)
+			limit = q.Window.Limit
 		}
-		mq.SetMaxTime(dur)
+
+		// Apply context deadline if any
+		if dl, ok := ctx.Deadline(); ok {
+			dur := dl.Sub(time.Now())
+			if dur < 0 {
+				dur = 0
+			}
+			mq.SetMaxTime(dur)
+		}
+
+		// Perform request
+		iter = mq.Iter()
+	} else {
+		// Create pipe query
+		fmt.Print([]bson.M{
+			bson.M{
+				"$match": qry,
+				"$group": agg,
+				"$sort":  srt,
+			},
+		})
+
+		mq := c.Pipe([]bson.M{
+			bson.M{"$match": qry}, bson.M{"$group": agg},
+		})
+
+		// Perform request
+		iter = mq.Iter()
 	}
 
-	// Perform request
-	iter := mq.Iter()
 	// Total is set to -1 because we have no easy way with MongoDB to to compute
 	// this value without performing two requests.
 	list := &resource.ItemList{
