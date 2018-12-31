@@ -308,15 +308,6 @@ func (m Handler) Find(ctx context.Context, q *query.Query) (*resource.ItemList, 
 		// Perform request
 		iter = mq.Iter()
 	} else {
-		// Create pipe query
-		fmt.Print([]bson.M{
-			bson.M{
-				"$match": qry,
-				"$group": agg,
-				"$sort":  srt,
-			},
-		})
-
 		mq := c.Pipe([]bson.M{
 			bson.M{"$match": qry}, bson.M{"$group": agg},
 		})
