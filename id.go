@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rs/rest-layer/schema"
+	"github.com/oktacode/rest-layer/schema"
 	"gopkg.in/mgo.v2/bson"
 )
 

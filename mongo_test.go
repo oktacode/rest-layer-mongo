@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/rest-layer/resource"
-	"github.com/rs/rest-layer/schema/query"
+	"github.com/oktacode/rest-layer/resource"
+	"github.com/oktacode/rest-layer/schema/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2"

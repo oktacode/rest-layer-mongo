@@ -1,8 +1,8 @@
 package mongo
 
 import (
-	"github.com/rs/rest-layer/resource"
-	"github.com/rs/rest-layer/schema/query"
+	"github.com/oktacode/rest-layer/resource"
+	"github.com/oktacode/rest-layer/schema/query"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -20,6 +20,11 @@ func getField(f string) string {
 // getQuery transform a query into a Mongo query.
 func getQuery(q *query.Query) (bson.M, error) {
 	return translatePredicate(q.Predicate)
+}
+
+// getQuery transform a query into a Mongo query.
+func getAggregateQuery(q *query.Query) (bson.M, error) {
+	return translateAggregate(q.Aggregate)
 }
 
 // getSort transform a resource.Lookup into a Mongo sort list.
@@ -62,6 +67,19 @@ func selectIDs(c *mgo.Collection, mq *mgo.Query) ([]interface{}, error) {
 		return nil, err
 	}
 	return ids, nil
+}
+
+func translateAggregate(q query.Aggregate) (bson.M, error) {
+	b := bson.M{}
+	for _, exp := range q {
+		switch t := exp.(type) {
+		case *query.Group:
+			b = bson.M{"_id": "$" + getField(t.Field), "total": bson.M{"$sum": 1}}
+		default:
+			return nil, resource.ErrNotImplemented
+		}
+	}
+	return b, nil
 }
 
 func translatePredicate(q query.Predicate) (bson.M, error) {
